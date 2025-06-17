@@ -367,7 +367,7 @@ class ApiWorker(QThread):
                                     "keywords": sub_question.keywords,
                                 }
                             )
-                            if sub_question.id not in completed_sub_questions
+                            if sub_question.id not in completed_sub_questions_dict
                             else {
                                 "id": sub_question.id,
                                 "type": "multiple_choice"
@@ -469,7 +469,9 @@ class ApiWorker(QThread):
                                     sub_question.id
                                 ].submitted_answer
                                 if sub_question.options is None
-                                else sub_question.submitted_answer.split("<OPTION>"),
+                                else completed_sub_questions_dict[
+                                    sub_question.id
+                                ].submitted_answer.split("<OPTION>"),
                                 "performance": completed_sub_questions_dict[
                                     sub_question.id
                                 ]
@@ -713,7 +715,7 @@ class ApiWorker(QThread):
                 "students": [
                     {
                         "id": student.id,
-                        "name": student.name,
+                        "name": student.display_name,
                         "performance_data": _process_performance_data(
                             self.nanokoClient.service.get_performance_date_data(
                                 user_id=student.id,
@@ -1033,7 +1035,21 @@ class ApiWorker(QThread):
                                 if sub_question.image_id is not None
                                 else None,
                                 "student_performances": [
-                                    student_performance.model_dump()
+                                    {
+                                        "user": student_performance.user.model_dump(),
+                                        "answer": student_performance.answer
+                                        if sub_question.options is None
+                                        else (
+                                            student_performance.answer.replace(
+                                                "<OPTION>", ", "
+                                            )
+                                            if student_performance.answer is not None
+                                            else None
+                                        ),
+                                        "performance": student_performance.performance,
+                                        "feedback": student_performance.feedback,
+                                        "date": student_performance,
+                                    }
                                     for student_performance in sub_question.student_performances
                                 ],
                             }
@@ -1155,7 +1171,7 @@ class ApiWorker(QThread):
                 return
 
             self.assignmentAssignmentResult.emit(
-                True, f"Assignment successfully assigned to class {class_id}"
+                True, "Assignment successfully assigned"
             )
         except Exception as e:
             self.operationFailed.emit("assign_assignment_to_class", str(e))

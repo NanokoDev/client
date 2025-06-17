@@ -17,6 +17,7 @@ from qfluentwidgets import (
     CheckBox,
     BodyLabel,
     InfoBadge,
+    CardWidget,
     TitleLabel,
     FlowLayout,
     PushButton,
@@ -32,15 +33,14 @@ from qfluentwidgets import (
     InfoBarPosition,
     SmoothScrollArea,
     PrimaryPushButton,
-    ElevatedCardWidget,
     TransparentToolButton,
 )
 
-from app.utils import levelToColor
+from app.utils import levelToColor, cropImageToSquare
 from app.controllers.studentController import StudentController
 
 
-class ClassCard(ElevatedCardWidget):
+class ClassCard(CardWidget):
     """Unified class card containing all assignments"""
 
     def __init__(self, className: str, assignments: list, parent=None):
@@ -134,7 +134,7 @@ class ClassCard(ElevatedCardWidget):
                 self._clearLayout(item.layout())
 
 
-class StatsCard(ElevatedCardWidget):
+class StatsCard(CardWidget):
     """Statistics display card"""
 
     def __init__(self, data: dict, parent=None):
@@ -263,7 +263,7 @@ class StatsCard(ElevatedCardWidget):
                 self._clearLayout(item.layout())
 
 
-class NumeracyMatrixCard(ElevatedCardWidget):
+class NumeracyMatrixCard(CardWidget):
     """Numeracy matrix table card"""
 
     EMOJI_MAP = {
@@ -441,7 +441,7 @@ class NumeracyMatrixCard(ElevatedCardWidget):
                 self._clearLayout(item.layout())
 
 
-class AssignmentCard(ElevatedCardWidget):
+class AssignmentCard(CardWidget):
     """Individual assignment card for the class page"""
 
     assignmentClicked = pyqtSignal(int)  # assignmentId
@@ -501,7 +501,7 @@ class AssignmentCard(ElevatedCardWidget):
         super().mousePressEvent(event)
 
 
-class FeedbackCard(ElevatedCardWidget):
+class FeedbackCard(CardWidget):
     """Feedback card displaying question results"""
 
     def __init__(self, feedbackText: str, performanceLevel: str, parent=None):
@@ -534,7 +534,7 @@ class FeedbackCard(ElevatedCardWidget):
         return InfoBadge.custom(level, *levelToColor(level))
 
 
-class BaseQuestionCard(ElevatedCardWidget):
+class BaseQuestionCard(CardWidget):
     """Base class for question cards"""
 
     def __init__(self, questionText: str, parent=None):
@@ -621,6 +621,7 @@ class OptionsQuestionCard(BaseQuestionCard):
         imageLayout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.imageLabel = ImageLabel()
+        self.imageLabel.scaledToWidth(800)
         self.imageLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
         imageLayout.addWidget(self.imageLabel)
 
@@ -645,6 +646,7 @@ class OptionsQuestionCard(BaseQuestionCard):
     def setImage(self, image: bytes):
         """Set the image"""
         self.imageLabel.setPixmap(QPixmap.fromImage(QImage.fromData(image)))
+        self.imageLabel.scaledToWidth(800)
         self.imageContainer.show()
 
     def hideImage(self):
@@ -683,6 +685,7 @@ class TextQuestionCard(BaseQuestionCard):
         imageLayout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.imageLabel = ImageLabel()
+        self.imageLabel.scaledToWidth(800)
         self.imageLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
         imageLayout.addWidget(self.imageLabel)
 
@@ -713,6 +716,7 @@ class TextQuestionCard(BaseQuestionCard):
     def setImage(self, image: bytes):
         """Set the image"""
         self.imageLabel.setPixmap(QPixmap.fromImage(QImage.fromData(image)))
+        self.imageLabel.scaledToWidth(800)
         self.imageContainer.show()
 
     def hideImage(self):
@@ -728,7 +732,7 @@ class TextQuestionCard(BaseQuestionCard):
         self.answerInput.setPlainText(text)
 
 
-class AskAIPanel(ElevatedCardWidget):
+class AskAIPanel(CardWidget):
     """AI assistant panel that appears when user clicks 'I don't know'"""
 
     sendMessage = pyqtSignal(str, list)  # message, history
@@ -1036,7 +1040,6 @@ class ClassInterface(QWidget):
                 assignment["description"],
                 assignment.get("image", None),
             )
-            card.assignmentClicked.connect(self.assignmentClicked.emit)
             todoLayout.addWidget(card)
 
         # Done
@@ -1057,13 +1060,14 @@ class ClassInterface(QWidget):
                 assignment["description"],
                 assignment.get("image", None),
             )
-            card.assignmentClicked.connect(self.doneAssignmentClicked.emit)
             doneLayout.addWidget(card)
 
         contentLayout.addLayout(todoLayout, 1)
         contentLayout.addLayout(doneLayout, 1)
 
         mainLayout.addLayout(contentLayout)
+
+        self._connectAssignmentSignals()
 
     def _onJoinClassClicked(self):
         """Handle join class button click"""
@@ -1073,49 +1077,73 @@ class ClassInterface(QWidget):
 
     def updateContent(self, classData: dict):
         """Update the interface content with new data"""
-        if self.className is None:
-            # Initialized with Join Class Interface
-            while self.mainLayout.count() > 0:
-                item = self.mainLayout.takeAt(0)
-                if item and item.widget():
-                    item.widget().setParent(None)
-                    item.widget().deleteLater()
-            self._setupRegularClassInterface(self.mainLayout)
-            return
-
         self.classData = classData
         self.className = classData.get("class_name", "No Class Available")
         self.teacherName = classData.get("teacher_name", "Not Available")
         self.todoAssignments = classData.get("to_do_assignments", [])
         self.doneAssignments = classData.get("done_assignments", [])
 
-        for titleLabel in self.findChildren(TitleLabel):
-            if hasattr(self, "classTitle") and titleLabel == self.classTitle:
-                titleLabel.setText(self.className)
-                break
+        if self.className is not None and hasattr(self, "classTitle"):
+            self.classTitle.setText(self.className)
+        if hasattr(self, "createdLabel"):
+            self.createdLabel.setText(f"Created by {self.teacherName}")
 
-        for bodyLabel in self.findChildren(BodyLabel):
-            if "Created by" in bodyLabel.text():
-                bodyLabel.setText(f"Created by {self.teacherName}")
-                break
+        if (
+            hasattr(self, "mainLayout")
+            and self.mainLayout is not None
+            and self.findChild(QVBoxLayout, "todoLayout") is not None
+        ):
+            self._updateAssignmentSections()
 
-        self._updateAssignmentSections()
+    def _connectAssignmentSignals(self):
+        """Connect signals for assignment cards after creating the interface"""
+        todoLayout = self.findChild(QVBoxLayout, "todoLayout")
+        doneLayout = self.findChild(QVBoxLayout, "doneLayout")
+
+        if todoLayout is not None:
+            self._connectAssignmentCardsInLayout(todoLayout, True)
+        if doneLayout is not None:
+            self._connectAssignmentCardsInLayout(doneLayout, False)
 
     def _updateAssignmentSections(self):
         """Update assignment cards in todo and done sections"""
         todoLayout = self.findChild(QVBoxLayout, "todoLayout")
         doneLayout = self.findChild(QVBoxLayout, "doneLayout")
 
-        self._clearAndAddAssignments(todoLayout, self.todoAssignments, True)
-        self._clearAndAddAssignments(doneLayout, self.doneAssignments, False)
+        if todoLayout is not None:
+            self._clearAndAddAssignments(todoLayout, self.todoAssignments, True)
+        if doneLayout is not None:
+            self._clearAndAddAssignments(doneLayout, self.doneAssignments, False)
+
+    def _connectAssignmentCardsInLayout(self, layout, isTodo):
+        """Connect signals for assignment cards in a specific layout"""
+        if layout is None:
+            return
+
+        for i in range(1, layout.count()):
+            item = layout.itemAt(i)
+            if item and item.widget() and isinstance(item.widget(), AssignmentCard):
+                card = item.widget()
+                try:
+                    card.assignmentClicked.disconnect()
+                except Exception:
+                    pass
+
+                if isTodo:
+                    card.assignmentClicked.connect(self.assignmentClicked.emit)
+                else:
+                    card.assignmentClicked.connect(self.doneAssignmentClicked.emit)
 
     def _clearAndAddAssignments(self, layout, assignments, isTodo):
         """Clear existing assignment cards and add new ones"""
+        if layout is None:
+            return
+
         while layout.count() > 1:
             item = layout.takeAt(1)
             if item and item.widget():
-                item.widget().setParent(None)
                 item.widget().deleteLater()
+                item.widget().setParent(None)
 
         for assignment in assignments:
             card = AssignmentCard(
@@ -1125,11 +1153,9 @@ class ClassInterface(QWidget):
                 assignment["description"],
                 assignment.get("image", None),
             )
-            if isTodo:
-                card.assignmentClicked.connect(self.assignmentClicked.emit)
-            else:
-                card.assignmentClicked.connect(self.doneAssignmentClicked.emit)
             layout.addWidget(card)
+
+        self._connectAssignmentCardsInLayout(layout, isTodo)
 
 
 class HomeInterface(QWidget):
@@ -1265,7 +1291,7 @@ class HomeInterface(QWidget):
             break
 
 
-class QuestionCard(ElevatedCardWidget):
+class QuestionCard(CardWidget):
     """Individual question card displaying question information"""
 
     questionClicked = pyqtSignal(int)  # questionId
@@ -1344,10 +1370,8 @@ class QuestionCard(ElevatedCardWidget):
 
         # Image
         if subQuestion.get("image", None):
-            imageWidget = ImageLabel(
-                QPixmap.fromImage(QImage.fromData(subQuestion["image"]))
-            )
-            imageWidget.setFixedSize(100, 75)
+            imageWidget = ImageLabel(cropImageToSquare(subQuestion["image"], 80))
+            imageWidget.setFixedSize(80, 80)
             questionLayout.addWidget(imageWidget)
 
         return questionLayout
@@ -1711,7 +1735,17 @@ class QuestionAnsweringInterface(QWidget):
             )
 
         if is_submitted:
-            questionCard.setAnswerText(subQuestionData.get("user_answer", ""))
+            if isinstance(questionCard, TextQuestionCard):
+                questionCard.setAnswerText(subQuestionData.get("user_answer", ""))
+                questionCard.answerInput.setReadOnly(True)
+            elif isinstance(questionCard, OptionsQuestionCard):
+                for checkbox in questionCard.checkboxes:
+                    checkbox.setChecked(
+                        subQuestionData.get("user_answer", []).count(checkbox.text())
+                        > 0
+                    )
+                    checkbox.setEnabled(False)
+
             questionCard.addExtraWidget(
                 FeedbackCard(
                     subQuestionData.get("feedback", ""),
@@ -2031,10 +2065,9 @@ class QuestionReviewInterface(QWidget):
                 questionCard.hideImage()
 
             user_answer = subQuestionData.get("user_answer", [])
-            for i, checkbox in enumerate(questionCard.checkboxes):
+            for checkbox in questionCard.checkboxes:
+                checkbox.setChecked(user_answer.count(checkbox.text()) > 0)
                 checkbox.setEnabled(False)
-                if (i + 1) in user_answer:
-                    checkbox.setChecked(True)
 
         elif question_type == "text" or question_type == "text_input":
             questionCard = TextQuestionCard(question_text, parent=self)
@@ -2100,7 +2133,7 @@ class QuestionReviewInterface(QWidget):
                     self.studentController.goToHome()
 
 
-class JoinClassCard(ElevatedCardWidget):
+class JoinClassCard(CardWidget):
     """Join class card for users not enrolled in any class"""
 
     joinClassClicked = pyqtSignal()
@@ -2142,7 +2175,7 @@ class JoinClassCard(ElevatedCardWidget):
         super().mousePressEvent(event)
 
 
-class JoinClassDialog(ElevatedCardWidget):
+class JoinClassDialog(CardWidget):
     """Dialog for joining a class"""
 
     joinClass = pyqtSignal(str, str)  # className, enterCode
@@ -2260,6 +2293,8 @@ class JoinClassDialog(ElevatedCardWidget):
 
 class StudentMainWindow(FluentWindow):
     """Main student application window"""
+
+    requestNewWindow = pyqtSignal()
 
     def __init__(self, studentController: StudentController = None):
         super().__init__()
@@ -2500,18 +2535,8 @@ class StudentMainWindow(FluentWindow):
 
     def onJoinClassResult(self, success: bool, message: str):
         """Handle join class result"""
-        self.loadData()
         if success:
-            InfoBar.success(
-                title="Success",
-                content=message,
-                orient=Qt.Orientation.Horizontal,
-                isClosable=True,
-                position=InfoBarPosition.TOP,
-                duration=3000,
-                parent=self,
-            )
-
+            self.requestNewWindow.emit()
         else:
             InfoBar.error(
                 title="Error",
@@ -2577,7 +2602,7 @@ class StudentMainWindow(FluentWindow):
             self.classInterface.joinClassRequested.connect(self.onJoinClassRequested)
         if self.homeInterface:
             self.homeInterface.classClicked.connect(
-                lambda: self.studentController.goToClass()
+                lambda: self.switchTo(self.classInterface)
             )
             self.homeInterface.joinClassRequested.connect(self.onJoinClassRequested)
         if self.questionsInterface:

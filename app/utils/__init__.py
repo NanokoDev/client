@@ -1,7 +1,8 @@
 import pytz
 from typing import Tuple
+from PyQt6.QtCore import Qt
 from datetime import datetime
-from PyQt6.QtGui import QColor
+from PyQt6.QtGui import QColor, QPixmap
 from nanoko.models.user import Permission
 
 
@@ -107,3 +108,36 @@ def datetimeToText(datetime: datetime) -> str:
         return datetime.strftime("%m/%d %H:%M")
     else:
         return datetime.strftime("%Y/%m/%d %H:%M")
+
+
+def cropImageToSquare(image_data: bytes, target_size: int = 60) -> QPixmap:
+    """
+    Crop image data to a square block and scale to target size.
+
+    Args:
+        image_data: Raw image bytes
+        target_size: Target width/height for the square image
+
+    Returns:
+        QPixmap: Cropped and scaled square image
+    """
+    if not image_data:
+        return QPixmap()
+
+    pixmap = QPixmap()
+    pixmap.loadFromData(image_data)
+
+    if pixmap.isNull():
+        return QPixmap()
+
+    size = min(pixmap.width(), pixmap.height())
+    x = (pixmap.width() - size) // 2
+    y = (pixmap.height() - size) // 2
+    cropped_pixmap = pixmap.copy(x, y, size, size)
+
+    return cropped_pixmap.scaled(
+        target_size,
+        target_size,
+        Qt.AspectRatioMode.KeepAspectRatio,
+        Qt.TransformationMode.SmoothTransformation,
+    )

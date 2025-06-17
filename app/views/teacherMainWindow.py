@@ -30,6 +30,7 @@ from qfluentwidgets import (
     BodyLabel,
     InfoBadge,
     RoundMenu,
+    CardWidget,
     TimePicker,
     PushButton,
     ImageLabel,
@@ -50,17 +51,16 @@ from qfluentwidgets import (
     SmoothScrollArea,
     SimpleCardWidget,
     PrimaryPushButton,
-    ElevatedCardWidget,
     FlyoutAnimationType,
     TransparentToolButton,
 )
 
-from app.utils import enumNameToText, levelToColor
 from app.controllers.teacherController import TeacherController
+from app.utils import enumNameToText, levelToColor, cropImageToSquare
 from app.views.studentMainWindow import OptionsQuestionCard, TextQuestionCard
 
 
-class TeacherClassCard(ElevatedCardWidget):
+class TeacherClassCard(CardWidget):
     """Teacher class card showing class information and assignments"""
 
     classClicked = pyqtSignal(int)  # classId
@@ -110,7 +110,7 @@ class TeacherClassCard(ElevatedCardWidget):
         super().mousePressEvent(event)
 
 
-class TeacherAssignmentCard(ElevatedCardWidget):
+class TeacherAssignmentCard(CardWidget):
     """Teacher assignment card with image"""
 
     assignmentClicked = pyqtSignal(int)  # assignmentId
@@ -156,7 +156,8 @@ class TeacherAssignmentCard(ElevatedCardWidget):
 
         # Image
         if image is not None:
-            imageWidget = ImageLabel(QImage.fromData(image))
+            scaled_pixmap = cropImageToSquare(image)
+            imageWidget = ImageLabel(scaled_pixmap)
             imageWidget.setFixedSize(60, 60)
             layout.addWidget(imageWidget)
 
@@ -167,7 +168,7 @@ class TeacherAssignmentCard(ElevatedCardWidget):
         super().mousePressEvent(event)
 
 
-class SelectableQuestionCard(ElevatedCardWidget):
+class SelectableQuestionCard(CardWidget):
     """Individual question card displaying question information, with a selectable checkbox"""
 
     selectionChanged = pyqtSignal(bool, int)  # selected, questionId
@@ -266,7 +267,7 @@ class SelectableQuestionCard(ElevatedCardWidget):
         # Image area
         imageData = questionData.get("image", None)
         if imageData:
-            imageWidget = ImageLabel(QImage.fromData(imageData))
+            imageWidget = ImageLabel(cropImageToSquare(imageData, 80))
             rightLayout.addWidget(imageWidget)
 
         questionLayout.addLayout(rightLayout)
@@ -720,7 +721,7 @@ class PerformanceChartWidget(QWidget):
         self.canvas.draw()
 
 
-class StudentPerformanceCard(ElevatedCardWidget):
+class StudentPerformanceCard(CardWidget):
     """Student performance card with chart"""
 
     def __init__(self, studentName: str, performanceData: dict = None, parent=None):
@@ -978,7 +979,7 @@ class AssignmentsTableWidget(TableWidget):
             self.setRowHeight(row, 50)
 
 
-class ClassPerformanceTableWidget(ElevatedCardWidget):
+class ClassPerformanceTableWidget(CardWidget):
     """Class performance statistics table widget"""
 
     def __init__(
@@ -1131,7 +1132,7 @@ class ClassPerformanceTableWidget(ElevatedCardWidget):
             self.controller.loadClassPerformance(className)
 
 
-class ClassCardWidget(ElevatedCardWidget):
+class ClassCardWidget(CardWidget):
     """Individual class card widget for the classes overview"""
 
     classClicked = pyqtSignal(int)  # classId
@@ -1523,7 +1524,7 @@ class IndividualClassInterface(QWidget):
         self.assignDialog.activateWindow()
 
 
-class StudentNumeracyMatrixWidget(ElevatedCardWidget):
+class StudentNumeracyMatrixWidget(CardWidget):
     """Individual student numeracy matrix widget"""
 
     def __init__(
@@ -1738,7 +1739,7 @@ class StudentStatisticsInterface(QWidget):
         contentLayout.addWidget(self.matrixAllTime)
 
         # Performance Chart
-        chartCard = ElevatedCardWidget()
+        chartCard = CardWidget()
         chartCard.setStyleSheet("background-color: white; border-radius: 8px;")
         chartCard.setFixedWidth(780)
         chartCard.setFixedHeight(320)
@@ -1823,7 +1824,7 @@ class StudentStatisticsInterface(QWidget):
             self.matrixAllTime.updateMatrixData(matrixAllTimeData)
 
 
-class AssignAssignmentDialog(ElevatedCardWidget):
+class AssignAssignmentDialog(CardWidget):
     """Assign assignment to class dialog"""
 
     def __init__(
@@ -1984,7 +1985,7 @@ class AssignAssignmentDialog(ElevatedCardWidget):
         )
 
 
-class TeacherHome(QWidget):
+class TeacherHomeInterface(QWidget):
     """Teacher home dashboard interface"""
 
     def __init__(self, controller: TeacherController = None, parent=None):
@@ -2023,7 +2024,6 @@ class TeacherHome(QWidget):
         classesLayout.setSpacing(15)
 
         classesTitle = SubtitleLabel("Classes")
-        classesTitle.setStyleSheet("color: #333333; font-weight: 600; font-size: 18px;")
         classesLayout.addWidget(classesTitle)
 
         self.classesGrid = QHBoxLayout()
@@ -2037,9 +2037,6 @@ class TeacherHome(QWidget):
         assignmentsLayout.setSpacing(15)
 
         assignmentsTitle = SubtitleLabel("Assignments")
-        assignmentsTitle.setStyleSheet(
-            "color: #333333; font-weight: 600; font-size: 18px;"
-        )
         assignmentsLayout.addWidget(assignmentsTitle)
 
         self.assignmentsGrid = QHBoxLayout()
@@ -2121,7 +2118,7 @@ class TeacherHome(QWidget):
             self.studentsGrid.insertWidget(self.studentsGrid.count() - 1, studentCard)
 
 
-class RemoveStudentDialog(ElevatedCardWidget):
+class RemoveStudentDialog(CardWidget):
     """Student removal confirmation dialog"""
 
     studentRemoved = pyqtSignal(int)
@@ -2200,7 +2197,7 @@ class RemoveStudentDialog(ElevatedCardWidget):
         self.close()
 
 
-class CreateClassDialog(ElevatedCardWidget):
+class CreateClassDialog(CardWidget):
     """Class creation dialog interface"""
 
     classCreated = pyqtSignal(str, str)  # className, enterCode
@@ -2307,7 +2304,7 @@ class CreateClassDialog(ElevatedCardWidget):
         )
 
 
-class CreateAssignmentDialog(ElevatedCardWidget):
+class CreateAssignmentDialog(CardWidget):
     """Assignment creation dialog/sheet interface"""
 
     assignmentCreated = pyqtSignal(str, str, list)  # name, description, questionIds
@@ -2560,7 +2557,7 @@ class QuestionsTableWidget(TableWidget):
             self.setRowHeight(row, 50)
 
 
-class UploadQuestionDialog(ElevatedCardWidget):
+class UploadQuestionDialog(CardWidget):
     """Upload question dialog matching the design image"""
 
     def __init__(self, controller: TeacherController = None, parent=None):
@@ -2850,7 +2847,7 @@ class SubQuestionWidget(SimpleCardWidget):
         imageSection.addWidget(imageLabel)
 
         self.imageLabel = ImageLabel()
-        self.imageLabel.setFixedSize(200, 150)
+        self.imageLabel.scaledToWidth(300)
         self.imageLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.imageLabel.setText("No image selected")
         self.imagePath = None
@@ -2952,12 +2949,8 @@ class SubQuestionWidget(SimpleCardWidget):
         try:
             pixmap = QPixmap(filePath)
             if not pixmap.isNull():
-                scaledPixmap = pixmap.scaled(
-                    self.imageLabel.size(),
-                    Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation,
-                )
-                self.imageLabel.setPixmap(scaledPixmap)
+                self.imageLabel.setPixmap(pixmap)
+                self.imageLabel.scaledToWidth(300)
                 self.imageLabel.setText("")
                 self.removeImageBtn.setVisible(True)
                 self.uploadBtn.setText("Change Image")
@@ -2967,6 +2960,8 @@ class SubQuestionWidget(SimpleCardWidget):
     def removeImage(self):
         """Remove the selected image"""
         self.imageLabel.clear()
+        self.imageLabel.setPixmap(QPixmap())
+        self.imageLabel.scaledToWidth(300)
         self.imageLabel.setText("No image selected")
         self.removeImageBtn.setVisible(False)
         self.uploadBtn.setText("Upload Image")
@@ -3287,12 +3282,12 @@ class StudentPerformanceWindow(FramelessWindow):
 
             # Performance
             performance = (
-                student["performance"].name
+                student["performance"].name.lower()
                 if student["performance"]
                 else "Not Submitted"
             )
             color, _ = levelToColor(performance)
-            performanceItem = QTableWidgetItem(performance)
+            performanceItem = QTableWidgetItem(enumNameToText(performance))
             performanceItem.setForeground(color)
             self.studentTable.setItem(row, 2, performanceItem)
 
@@ -3314,7 +3309,7 @@ class StudentPerformanceWindow(FramelessWindow):
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
 
 
-class StandardAnswerCard(ElevatedCardWidget):
+class StandardAnswerCard(CardWidget):
     """Standard answer card displaying correct answers"""
 
     def __init__(self, standardAnswer: str, parent=None):
@@ -3754,7 +3749,7 @@ class TeacherAssignmentReviewInterface(QWidget):
         total_students = len(student_performances)
 
         # Main card
-        card = ElevatedCardWidget()
+        card = CardWidget()
         card.setStyleSheet("border-radius: 8px;")
 
         layout = QVBoxLayout(card)
@@ -3795,6 +3790,7 @@ class TeacherAssignmentReviewInterface(QWidget):
         # Image
         if image_data:
             imageWidget = ImageLabel(QImage.fromData(image_data))
+            imageWidget.scaledToWidth(800)
             contentLayout.addWidget(imageWidget)
 
         layout.addLayout(contentLayout)
@@ -4162,7 +4158,7 @@ class TeacherMainWindow(FluentWindow):
             if self.homeInterface:
                 self._updateHomeInterfaceContent(data)
             else:
-                self.homeInterface = TeacherHome(self.teacherController)
+                self.homeInterface = TeacherHomeInterface(self.teacherController)
                 self.homeInterface.updateContent(data)
             self._finishLoading()
 

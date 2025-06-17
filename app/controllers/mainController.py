@@ -1,6 +1,7 @@
 from nanoko import Nanoko
 from PyQt6.QtCore import Qt
 from nanoko.models.user import User
+from PyQt6.QtWidgets import QApplication
 from qfluentwidgets import InfoBar, InfoBarPosition
 
 from app.controllers.apiWorker import ApiWorker
@@ -68,10 +69,36 @@ class MainController:
         role = user.permission.name.lower().replace("admin", "student")
         if role == "student":
             self.mainWindow = StudentMainWindow(self.studentController)
+            self.mainWindow.requestNewWindow.connect(self._createNewStudentWindow)
         elif role == "teacher":
             self.mainWindow = TeacherMainWindow(self.teacherController)
 
         self.mainWindow.show()
+
+    def _createNewStudentWindow(self):
+        """Create a new student window and close the current one"""
+        if not self.mainWindow or not isinstance(self.mainWindow, StudentMainWindow):
+            return
+
+        current_geometry = self.mainWindow.geometry()
+        old_window = self.mainWindow
+
+        QApplication.setQuitOnLastWindowClosed(False)
+
+        try:
+            old_window.requestNewWindow.disconnect()
+        except Exception:
+            pass
+
+        self.mainWindow = StudentMainWindow(self.studentController)
+        self.mainWindow.requestNewWindow.connect(self._createNewStudentWindow)
+        self.mainWindow.setGeometry(current_geometry)
+        self.mainWindow.show()
+
+        old_window.close()
+        old_window.deleteLater()
+
+        QApplication.setQuitOnLastWindowClosed(True)
 
     def showSuccessMessage(self, message, parentDialog):
         """Show success message using InfoBar"""
