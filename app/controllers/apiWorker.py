@@ -739,6 +739,11 @@ class ApiWorker(QThread):
                     for class_ in overview.classes
                 ]
             )
+        except NanokoAPI403ForbiddenError as e:
+            self.operationFailed.emit(
+                "load_teacher_dashboard_data",
+                e.response.json()["detail"],
+            )
         except Exception as e:
             self.operationFailed.emit("load_teacher_dashboard_data", str(e))
 
@@ -757,6 +762,11 @@ class ApiWorker(QThread):
                 for assignment in assignments
             ]
             self.teacherAssignmentsDataLoaded.emit(assignments_data)
+        except (NanokoAPI403ForbiddenError, NanokoAPI404NotFoundError) as e:
+            self.operationFailed.emit(
+                "load_teacher_assignments_data",
+                e.response.json()["detail"],
+            )
         except Exception as e:
             self.operationFailed.emit("load_teacher_assignments_data", str(e))
 
@@ -827,6 +837,11 @@ class ApiWorker(QThread):
 
             print(f"[ApiWorker] class_data: {class_data}")
             self.teacherClassDataLoaded.emit(class_data)
+        except (NanokoAPI400BadRequestError, NanokoAPI404NotFoundError) as e:
+            self.operationFailed.emit(
+                "load_teacher_class_data",
+                e.response.json()["detail"],
+            )
         except Exception as e:
             self.operationFailed.emit("load_teacher_class_data", str(e))
 
@@ -884,6 +899,11 @@ class ApiWorker(QThread):
                 for assignment in assignments
             ]
             self.availableAssignmentsDataLoaded.emit(available_assignments_data)
+        except (NanokoAPI403ForbiddenError, NanokoAPI404NotFoundError) as e:
+            self.operationFailed.emit(
+                "load_available_assignments",
+                e.response.json()["detail"],
+            )
         except Exception as e:
             self.operationFailed.emit("load_available_assignments", str(e))
 
@@ -912,6 +932,11 @@ class ApiWorker(QThread):
             self.assignmentCreated.emit(
                 True, f"Assignment '{assignment.name}' created successfully!"
             )
+        except (NanokoAPI403ForbiddenError, NanokoAPI404NotFoundError) as e:
+            self.operationFailed.emit(
+                "create_assignment",
+                e.response.json()["detail"],
+            )
         except Exception as e:
             self.operationFailed.emit("create_assignment", str(e))
 
@@ -933,6 +958,12 @@ class ApiWorker(QThread):
                 class_name=class_name, enter_code=enter_code
             )
             self.classCreated.emit(True, f"Class '{class_.name}' created successfully!")
+        except (
+            NanokoAPI400BadRequestError,
+            NanokoAPI403ForbiddenError,
+            NanokoAPI404NotFoundError,
+        ) as e:
+            self.operationFailed.emit("create_class", e.response.json()["detail"])
         except Exception as e:
             self.operationFailed.emit("create_class", str(e))
 
@@ -987,7 +1018,14 @@ class ApiWorker(QThread):
                 True,
                 f"Question '{name}' created successfully with {len(sub_questions_data)} sub-questions!",
             )
-
+        except (
+            NanokoAPI403ForbiddenError,
+            NanokoAPI404NotFoundError,
+        ) as e:
+            self.operationFailed.emit(
+                "create_question",
+                e.response.json()["detail"],
+            )
         except Exception as e:
             print(traceback.format_exc())
             self.operationFailed.emit("create_question", str(e))
@@ -1060,6 +1098,11 @@ class ApiWorker(QThread):
                 ],
             }
             self.classAssignmentReviewLoaded.emit(review_data)
+        except (NanokoAPI403ForbiddenError, NanokoAPI404NotFoundError) as e:
+            self.operationFailed.emit(
+                "load_class_assignment_review",
+                e.response.json()["detail"],
+            )
         except Exception as e:
             self.operationFailed.emit("load_class_assignment_review", str(e))
 
@@ -1136,6 +1179,11 @@ class ApiWorker(QThread):
                 ],
             }
             self.assignmentQuestionsDataLoaded.emit(assignment_questions_data)
+        except (NanokoAPI403ForbiddenError, NanokoAPI404NotFoundError) as e:
+            self.operationFailed.emit(
+                "load_assignment_questions",
+                e.response.json()["detail"],
+            )
         except Exception as e:
             self.operationFailed.emit("load_assignment_questions", str(e))
 

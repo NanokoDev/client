@@ -39,6 +39,7 @@ from qfluentwidgets import (
     FlowLayout,
     TableWidget,
     InfoBarIcon,
+    TeachingTip,
     CaptionLabel,
     SplashScreen,
     FluentWindow,
@@ -53,6 +54,7 @@ from qfluentwidgets import (
     PrimaryPushButton,
     FlyoutAnimationType,
     TransparentToolButton,
+    TeachingTipTailPosition,
 )
 
 from app.controllers.teacherController import TeacherController
@@ -2237,7 +2239,10 @@ class CreateClassDialog(CardWidget):
         nameLayout.addWidget(self.nameInput)
 
         # Enter Code
-        enterCodeLayout = QVBoxLayout()
+        enterCodeVLayout = QVBoxLayout()
+        enterCodeVLayout.setSpacing(8)
+        enterCodeLayout = QHBoxLayout()
+        enterCodeLayout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         enterCodeLayout.setSpacing(8)
 
         enterCodeLabel = BodyLabel("Enter Code")
@@ -2246,12 +2251,20 @@ class CreateClassDialog(CardWidget):
         )
         enterCodeLayout.addWidget(enterCodeLabel)
 
+        self.enterCodeInfoButton = TransparentToolButton(FluentIcon.INFO)
+        self.enterCodeInfoButton.setFixedSize(20, 20)
+        self.enterCodeInfoButton.clicked.connect(self.showEnterCodeInfo)
+        self.enterCodeInfoButton.setToolTip("Click to see class code info")
+        enterCodeLayout.addWidget(self.enterCodeInfoButton)
+
         self.enterCodeInput = LineEdit()
         self.enterCodeInput.setPlaceholderText("Enter class code")
-        enterCodeLayout.addWidget(self.enterCodeInput)
+
+        enterCodeVLayout.addLayout(enterCodeLayout)
+        enterCodeVLayout.addWidget(self.enterCodeInput)
 
         mainLayout.addLayout(nameLayout)
-        mainLayout.addLayout(enterCodeLayout)
+        mainLayout.addLayout(enterCodeVLayout)
 
         mainLayout.addStretch()
 
@@ -2291,6 +2304,22 @@ class CreateClassDialog(CardWidget):
         self.classCreated.emit(className, enterCode)
 
         self.close()
+
+    def showEnterCodeInfo(self):
+        """Show enter code info in a teaching tip for better UX"""
+        infoContent = """• The enter code is a code that is used for students to join the class.
+• Make sure it is secure and not easy to guess."""
+
+        TeachingTip.create(
+            target=self.enterCodeInfoButton,
+            icon=FluentIcon.INFO,
+            title="Enter Code Info",
+            content=infoContent,
+            isClosable=True,
+            tailPosition=TeachingTipTailPosition.BOTTOM,
+            duration=3000,
+            parent=self,
+        )
 
     def showError(self, message: str):
         """Show error message to user"""
