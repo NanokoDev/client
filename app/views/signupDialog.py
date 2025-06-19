@@ -262,26 +262,31 @@ class SignUpDialog(FramelessWindow):
             return False
 
         if len(password) < 8:
+            self.showPasswordRequirements()
             self.showError("Password must be at least 8 characters long")
             self.passwordInput.setFocus()
             return False
 
         if not any(c.isupper() for c in password):
+            self.showPasswordRequirements()
             self.showError("Password must include at least one uppercase letter")
             self.passwordInput.setFocus()
             return False
 
         if not any(c.islower() for c in password):
+            self.showPasswordRequirements()
             self.showError("Password must include at least one lowercase letter")
             self.passwordInput.setFocus()
             return False
 
         if not any(c.isdigit() for c in password):
+            self.showPasswordRequirements()
             self.showError("Password must include at least one number")
             self.passwordInput.setFocus()
             return False
 
         if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+            self.showPasswordRequirements()
             self.showError("Password must include at least one symbol")
             self.passwordInput.setFocus()
             return False
