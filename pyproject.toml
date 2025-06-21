@@ -5,7 +5,7 @@ description = "The client for Nanoko"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "nanoko-python>=0.2.0",
+    "nanoko-python>=0.2.1",
     "pyqt6>=6.9.0",
     "pyqt6-fluent-widgets>=1.8.1",
     "keyring>=24.0.0",
@@ -16,6 +16,8 @@ dependencies = [
 [dependency-groups]
 dev = [
     "nanoko-python",
+    "nuitka>=2.7.10",
+    "pyinstaller>=6.14.1",
 ]
 
 [tool.uv.sources]

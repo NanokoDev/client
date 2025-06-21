@@ -1,20 +1,57 @@
-# Nanoko Client
+<p align="center">
+  <a href="https://github.com/NanokoDev"><img src="https://avatars.githubusercontent.com/u/204253972?s=200&v=4" width="200" height="200" alt="Nanoko"></a>
+</p>
 
-The client for Nanoko, a project that aims to help Year 9-10 students on NCEA Numeracy.
+<div align="center">
+
+# Nanoko
+
+_An AI-powered NCEA Numeracy platform_
+
+</div>
 
 ## Features
 
-- User-friendly modern interface
-- Both student and teacher clients
-- AI integration for giving instant feedback
-- Student data analysis for teachers
-- Question uploading for teachers
+- User-friendly modern interface with PyQt6
+- Separate student and teacher clients
+- AI integration for instant feedback
+- Student data analysis
+- Question uploading
 
-## Installation
+## Preview
 
-1. Use your package manager to install the dependencies.
+### Student Client
 
-2. Run `main.py` to start the application.
+The student client has 3 main pages - Home, Class, and Question
+
+![Student Client Home](./docs/preview/student-client-home.png)
+![Student Client Class](./docs/preview/student-client-class.png)
+![Student Client Question Answering](./docs/preview/student-client-question-answering.png)
+![Student Client Question](./docs/preview/student-client-question.png)
+
+### Teacher Client
+
+The teacher client has 4 main pages - Home, Class, Assignment, and Question
+
+![Teacher Client Home](./docs/preview/teacher-client-home.png)
+![Teacher Client Class](./docs/preview/teacher-client-class.png)
+![Teacher Client Class - Student](./docs/preview/teacher-client-class-student.png)
+![Teacher Client Class - Assignment](./docs/preview/teacher-client-class-assignment.png)
+![Teacher Client Assignments](./docs/preview/teacher-client-assignment.png)
+![Teacher Client Questions](./docs/preview/teacher-client-question.png)
+![Teacher Client Questions - Upload](./docs/preview/teacher-client-question-upload.png)
+
+## Download
+
+Binaries are available for Windows in the [releases](https://github.com/NanokoDev/client/releases) page, built with PyInstaller.
+
+## Known Issues
+
+- Application Crash (Student Client): When users enter the question answering page and submit few sub-questions, there's a small chance that the background refreshing method will delete the PopUpAnIsStackedWidget, causing PyQt to crash when trying to switch pages. A temporary solution is to restart the application automatically when crashing.
+
+- Loading Window (Student Client): When opening the question answering page, a small black window may briefly appear during data fetching from the backend. The cause of this behavior is currently unknown.
+
+- Text Display (Teacher Client): On the question selection page and question reviewing page, texts in CardWidget may be cut off by the border. Users need to fullscreen the application to resolve this display issue.
 
 ## License
 
