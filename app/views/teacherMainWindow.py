@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import QApplication
 from qframelesswindow import FramelessWindow
 from PyQt6.QtGui import QColor, QPixmap, QImage, QIcon
 from nanoko.models.question import ConceptType, ProcessType
-from PyQt6.QtCore import Qt, pyqtSignal, QTime, QSize, QEasingCurve
+from PyQt6.QtCore import Qt, pyqtSignal, QTime, QSize, QEasingCurve, QPoint
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from PyQt6.QtWidgets import (
     QLabel,
@@ -753,20 +753,22 @@ class StudentPerformanceCard(CardWidget):
 class StudentTableWidget(TableWidget):
     """Custom table widget for displaying students"""
 
-    studentStatisticsClicked = pyqtSignal(int, str)  # studentId, studentName
+    studentStatisticsClicked = pyqtSignal(
+        int, str, int
+    )  # studentId, studentName, classId
     studentRemovalRequested = pyqtSignal(int, str)  # studentId, studentName
 
-    def __init__(self, controller: TeacherController = None, parent=None):
+    def __init__(self, classId: int, controller: TeacherController = None, parent=None):
         super().__init__(parent)
         self.controller = controller
+        self.classId = classId
         self.students = []
-        self.className = ""
         self.setupTable()
         self.setupContextMenu()
 
     def setupTable(self):
-        self.setColumnCount(2)
-        self.setHorizontalHeaderLabels(["Name", "Username"])
+        self.setColumnCount(3)
+        self.setHorizontalHeaderLabels(["Name", "Username", ""])
 
         self.setRowCount(0)
 
@@ -778,6 +780,9 @@ class StudentTableWidget(TableWidget):
         header = self.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)
+
+        self.setColumnWidth(2, 20)
 
     def handleDoubleClick(self, item):
         """Handle double-click on student item to view statistics"""
@@ -788,7 +793,7 @@ class StudentTableWidget(TableWidget):
         studentName = self.students[row].get("name")
         print(f"Student ID: {studentId}, Student Name: {studentName}")
         print(f"Students: {self.students}")
-        self.studentStatisticsClicked.emit(studentId, studentName)
+        self.studentStatisticsClicked.emit(studentId, studentName, self.classId)
 
     def setupContextMenu(self):
         """Setup context menu for right-click actions"""
@@ -798,6 +803,7 @@ class StudentTableWidget(TableWidget):
     def showContextMenu(self, position):
         """Show context menu on right-click"""
         item = self.itemAt(position)
+        print(position)
         if item is None:
             return
 
@@ -823,17 +829,43 @@ class StudentTableWidget(TableWidget):
 
         menu.exec(self.mapToGlobal(position))
 
+    def showContextMenuForRow(self, row: int):
+        """Show context menu for a specific row at the button's position"""
+        if row >= len(self.students):
+            return
+
+        studentId = self.students[row].get("id")
+        studentName = self.students[row].get("name")
+
+        menu = RoundMenu(parent=self)
+
+        statsAction = Action(FluentIcon.PIE_SINGLE, "View Statistics")
+        statsAction.triggered.connect(
+            lambda: self.handleStatisticsClick(studentId, studentName)
+        )
+        menu.addAction(statsAction)
+
+        menu.addSeparator()
+
+        removeAction = Action(FluentIcon.DELETE, "Remove Student")
+        removeAction.triggered.connect(
+            lambda: self.handleRemoveStudent(studentId, studentName)
+        )
+        menu.addAction(removeAction)
+
+        cellRect = self.visualRect(self.model().index(row, 2))
+        globalPos = self.mapToGlobal(cellRect.bottomLeft())
+        menuPos = QPoint(globalPos.x() + cellRect.width() // 2, globalPos.y())
+
+        menu.exec(menuPos)
+
     def handleStatisticsClick(self, studentId: int, studentName: str):
         """Handle statistics button click"""
-        self.studentStatisticsClicked.emit(studentId, studentName)
+        self.studentStatisticsClicked.emit(studentId, studentName, self.classId)
 
     def handleRemoveStudent(self, studentId: int, studentName: str):
         """Handle remove student request"""
         self.studentRemovalRequested.emit(studentId, studentName)
-
-    def setClassName(self, className: str):
-        """Set the class name for this table"""
-        self.className = className
 
     def updateStudents(self, studentsData: list):
         """Update the students table with new data"""
@@ -856,6 +888,15 @@ class StudentTableWidget(TableWidget):
             )
             self.setItem(row, 1, usernameItem)
 
+            # More column
+            moreButton = TransparentToolButton(FluentIcon.MORE, parent=self)
+            moreButton.setFixedSize(20, 20)
+            moreButton.setCursor(Qt.CursorShape.PointingHandCursor)
+            moreButton.clicked.connect(
+                lambda checked, row=row: self.showContextMenuForRow(row)
+            )
+            self.setCellWidget(row, 2, moreButton)
+
 
 class AssignmentsTableWidget(TableWidget):
     """Custom table widget for displaying assignments"""
@@ -868,9 +909,9 @@ class AssignmentsTableWidget(TableWidget):
         self.setupContextMenu()
 
     def setupTable(self):
-        self.setColumnCount(4)
+        self.setColumnCount(5)
         self.setHorizontalHeaderLabels(
-            ["Assignment Name", "Description", "Status", "Due Date"]
+            ["Assignment Name", "Description", "Status", "Due Date", ""]
         )
 
         self.assignments = []
@@ -887,10 +928,12 @@ class AssignmentsTableWidget(TableWidget):
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
 
         self.setColumnWidth(0, 200)  # Assignment Name
         self.setColumnWidth(2, 100)  # Status
         self.setColumnWidth(3, 120)  # Due Date
+        self.setColumnWidth(4, 20)  # More column
 
     def setupContextMenu(self):
         """Setup context menu for right-click actions"""
@@ -923,6 +966,25 @@ class AssignmentsTableWidget(TableWidget):
         menu.addAction(reviewAction)
 
         menu.exec(self.mapToGlobal(position))
+
+    def showContextMenuForRow(self, row: int):
+        """Show context menu for a specific row at the button's position"""
+        if row >= len(self.assignments):
+            return
+
+        assignmentId = self.assignments[row][4]
+
+        menu = RoundMenu(parent=self)
+
+        reviewAction = Action(FluentIcon.LINK, "Review Assignment")
+        reviewAction.triggered.connect(lambda: self.handleReviewClick(assignmentId))
+        menu.addAction(reviewAction)
+
+        cellRect = self.visualRect(self.model().index(row, 4))
+        globalPos = self.mapToGlobal(cellRect.bottomLeft())
+        menuPos = QPoint(globalPos.x() + cellRect.width() // 2, globalPos.y())
+
+        menu.exec(menuPos)
 
     def setClassId(self, classId: int):
         """Set the class name for this table"""
@@ -976,6 +1038,15 @@ class AssignmentsTableWidget(TableWidget):
             dueItem = QTableWidgetItem(due_date)
             dueItem.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
             self.setItem(row, 3, dueItem)
+
+            # More column
+            moreButton = TransparentToolButton(FluentIcon.MORE, parent=self)
+            moreButton.setFixedSize(20, 20)
+            moreButton.setCursor(Qt.CursorShape.PointingHandCursor)
+            moreButton.clicked.connect(
+                lambda checked, row=row: self.showContextMenuForRow(row)
+            )
+            self.setCellWidget(row, 4, moreButton)
 
             # Set row height
             self.setRowHeight(row, 50)
@@ -1397,11 +1468,12 @@ class IndividualClassInterface(QWidget):
         layout.setContentsMargins(0, 20, 0, 0)
 
         # Student table
-        self.studentTable = StudentTableWidget(self.controller)
-        self.studentTable.setClassName(self.className)
+        self.studentTable = StudentTableWidget(self.classId, self.controller)
         self.studentTable.studentStatisticsClicked.connect(
-            lambda studentId, studentName: self.controller.showStudentStatistics(
-                studentId, studentName
+            lambda studentId,
+            studentName,
+            classId: self.controller.showStudentStatistics(
+                studentId, studentName, classId
             )
         )
         self.studentTable.studentRemovalRequested.connect(
@@ -1489,7 +1561,7 @@ class IndividualClassInterface(QWidget):
         """Update students table with data from API"""
         if hasattr(self, "studentTable"):
             self.studentTable.updateStudents(studentsData)
-            self.studentTable.setClassName(self.className)
+            self.studentTable.classId = self.classId
 
     def updateAssignmentsData(self, assignmentsData: list):
         """Update assignments table with data from API"""
@@ -1762,12 +1834,25 @@ class StudentStatisticsInterface(QWidget):
         chartLayout.addWidget(self.performanceChart)
 
         contentLayout.addWidget(chartCard)
-
         mainLayout.addLayout(contentLayout)
+
+        # Footer
+        footerLayout = QHBoxLayout()
+        footerLayout.setContentsMargins(0, 0, 0, 0)
+        footerLayout.setSpacing(0)
+        backButton = PushButton("Back")
+        backButton.clicked.connect(self.handleBack)
+        footerLayout.addWidget(backButton, 0, Qt.AlignmentFlag.AlignLeft)
+        footerLayout.addStretch()
+        mainLayout.addLayout(footerLayout)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(scrollArea)
+
+    def handleBack(self):
+        """Handle back button click"""
+        self.controller.showIndividualClass(self.classId)
 
     def updateStudentInfo(self, studentName: str, classId: int):
         """Update the student and class information"""
@@ -4120,9 +4205,11 @@ class TeacherMainWindow(FluentWindow):
         """Handle navigation back to classes overview"""
         self.switchTo(self.classesInterface)
 
-    def handleShowStudentStatistics(self, studentId: int, studentName: str):
+    def handleShowStudentStatistics(
+        self, studentId: int, studentName: str, classId: int
+    ):
         """Handle navigation to student statistics interface"""
-        self.teacherController.loadStudentStatistics(studentId, studentName)
+        self.teacherController.loadStudentStatistics(studentId, studentName, classId)
 
     def handleShowAssignmentReview(self, reviewData: dict):
         """Handle navigation to assignment review interface"""

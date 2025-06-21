@@ -10,7 +10,9 @@ class TeacherController(QObject):
     # Navigation signals
     navigateToClassOverview = pyqtSignal()
     navigateToIndividualClass = pyqtSignal(int, str)  # classId, tab
-    navigateToStudentStatistics = pyqtSignal(int, str)  # studentId, studentName
+    navigateToStudentStatistics = pyqtSignal(
+        int, str, int
+    )  # studentId, studentName, classId
     navigateToAssignmentReview = pyqtSignal(dict)  # assignmentData
     navigateToAssignmentQuestions = pyqtSignal(int)  # assignmentId
     navigateToAssignments = pyqtSignal()
@@ -83,9 +85,9 @@ class TeacherController(QObject):
         """Navigate to individual class interface"""
         self.navigateToIndividualClass.emit(classId, tab)
 
-    def showStudentStatistics(self, studentId: int, studentName: str):
+    def showStudentStatistics(self, studentId: int, studentName: str, classId: int):
         """Navigate to individual student statistics interface"""
-        self.navigateToStudentStatistics.emit(studentId, studentName)
+        self.navigateToStudentStatistics.emit(studentId, studentName, classId)
 
     def showAssignmentReview(self, assignmentId: int):
         """Navigate to assignment questions interface with standard answers"""
@@ -121,7 +123,7 @@ class TeacherController(QObject):
         self.apiWorker.setup("load_teacher_class_data", class_id=classId)
         self.apiWorker.start()
 
-    def loadStudentStatistics(self, studentId: int, studentName: str):
+    def loadStudentStatistics(self, studentId: int, studentName: str, classId: int):
         """Load student statistics data"""
         print(
             f"[TeacherController] loadStudentStatistics called for {studentId} {studentName}"
@@ -130,6 +132,7 @@ class TeacherController(QObject):
             "load_teacher_student_statistics",
             student_id=studentId,
             student_name=studentName,
+            class_id=classId,
         )
         self.apiWorker.start()
 

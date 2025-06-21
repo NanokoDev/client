@@ -868,6 +868,7 @@ class ApiWorker(QThread):
             )
 
             student_data = {
+                "class_id": self.params.get("class_id"),
                 "student_id": student_id,
                 "student_name": student_name,
                 "matrix_30_days": matrix_30_days.model_dump(),
