@@ -16,6 +16,7 @@ class TeacherController(QObject):
     navigateToAssignmentReview = pyqtSignal(dict)  # assignmentData
     navigateToAssignmentQuestions = pyqtSignal(int)  # assignmentId
     navigateToAssignments = pyqtSignal()
+    navigateToQuestions = pyqtSignal()
 
     # Data signals
     dashboardDataReady = pyqtSignal(dict)
@@ -34,6 +35,7 @@ class TeacherController(QObject):
     availableAssignmentsDataReady = pyqtSignal(list)
     filteredQuestionsDataReady = pyqtSignal(list)
     subQuestionStudentPerformanceReady = pyqtSignal(dict)
+    questionPreviewDataReady = pyqtSignal(dict)
 
     operationError = pyqtSignal(str, str)  # operation, error_message
 
@@ -73,6 +75,9 @@ class TeacherController(QObject):
         self.apiWorker.filteredQuestionsLoaded.connect(
             self.filteredQuestionsDataReady.emit
         )
+        self.apiWorker.questionPreviewDataLoaded.connect(
+            self.questionPreviewDataReady.emit
+        )
 
         self.apiWorker.operationFailed.connect(self.operationError.emit)
 
@@ -100,6 +105,10 @@ class TeacherController(QObject):
     def goToAssignments(self):
         """Navigate back to assignments interface"""
         self.navigateToAssignments.emit()
+
+    def goToQuestions(self):
+        """Navigate back to questions interface"""
+        self.navigateToQuestions.emit()
 
     # Data loading methods
     def loadDashboardData(self):
@@ -143,6 +152,11 @@ class TeacherController(QObject):
             assignment_id=assignmentId,
             class_id=classId,
         )
+        self.apiWorker.start()
+
+    def loadQuestionPreview(self, questionId: int):
+        """Load question preview data"""
+        self.apiWorker.setup("load_question_preview", question_id=questionId)
         self.apiWorker.start()
 
     # Creation methods

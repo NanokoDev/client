@@ -56,6 +56,7 @@ class ApiWorker(QThread):
     assignmentAssignmentResult = pyqtSignal(bool, str)  # success, message
     availableAssignmentsDataLoaded = pyqtSignal(list)
     filteredQuestionsLoaded = pyqtSignal(list)
+    questionPreviewDataLoaded = pyqtSignal(dict)
 
     operationFailed = pyqtSignal(str, str)  # operation, error_message
 
@@ -149,8 +150,8 @@ class ApiWorker(QThread):
                     self._handleAssignAssignmentToClass()
                 case "load_filtered_questions":
                     self._handleLoadFilteredQuestions()
-                case "load_sub_question_student_performance":
-                    self._handleLoadSubQuestionStudentPerformance()
+                case "load_question_preview":
+                    self._handleLoadQuestionPreview()
                 case _:
                     self.operationFailed.emit(
                         self.operation, f"Unknown operation: {self.operation}"
@@ -1292,3 +1293,52 @@ class ApiWorker(QThread):
 
         except Exception as e:
             self.operationFailed.emit("load_filtered_questions", str(e))
+
+    def _handleLoadQuestionPreview(self):
+        """Handle loading question preview data"""
+        try:
+            question_id = self.params.get("question_id")
+            questions = self.nanokoClient.user.get_questions()
+            question = [
+                question for question in questions if question.id == question_id
+            ]
+            if len(question) == 0:
+                self.operationFailed.emit("load_question_preview", "Question not found")
+                return
+            question = question[0]
+            question_data = {
+                "id": question.id,
+                "title": question.name,
+                "attribution": getAttribution(question.source),
+                "sub_questions": [
+                    {
+                        "id": sub_question.id,
+                        "type": "multiple_choice" if sub_question.options else "text",
+                        "text": sub_question.description,
+                        "answer": sub_question.answer,
+                        "options": sub_question.options,
+                        "image": self.nanokoClient.bank.get_image(sub_question.image_id)
+                        if sub_question.image_id is not None
+                        else None,
+                        "tags": [
+                            (
+                                enumNameToText(sub_question.concept.name),
+                                "concept",
+                            ),
+                            (
+                                enumNameToText(sub_question.process.name),
+                                "process",
+                            ),
+                        ],
+                    }
+                    for sub_question in question.sub_questions
+                ],
+            }
+            self.questionPreviewDataLoaded.emit(question_data)
+        except (NanokoAPI403ForbiddenError, NanokoAPI404NotFoundError) as e:
+            self.operationFailed.emit(
+                "load_question_preview",
+                e.response.json()["detail"],
+            )
+        except Exception as e:
+            self.operationFailed.emit("load_question_preview", str(e))

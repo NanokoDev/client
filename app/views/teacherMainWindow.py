@@ -2604,30 +2604,39 @@ class QuestionsTableWidget(TableWidget):
     def __init__(self, controller: TeacherController = None, parent=None):
         super().__init__(parent)
         self.controller = controller
+        self.questions = []
         self.setupTable()
 
     def setupTable(self):
-        self.setColumnCount(4)
-        self.setHorizontalHeaderLabels(["Name", "Source", "Status", "Sub-Questions"])
+        self.setColumnCount(5)
+        self.setHorizontalHeaderLabels(
+            ["Name", "Source", "Status", "Sub-Questions", ""]
+        )
 
         self.setRowCount(0)
 
         self.setSelectionBehavior(TableWidget.SelectionBehavior.SelectRows)
         self.verticalHeader().setVisible(False)
+        self.doubleClicked.connect(self.handleItemDoubleClick)
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self.showContextMenu)
 
         header = self.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
 
         self.setColumnWidth(0, 200)  # Name
         self.setColumnWidth(1, 120)  # Source
         self.setColumnWidth(2, 120)  # Status
         self.setColumnWidth(3, 100)  # Sub-questions
+        self.setColumnWidth(4, 20)  # More column
 
     def updateQuestions(self, questionsData: list):
         """Update the questions table with new data"""
+        self.questions = questionsData
         self.setRowCount(len(questionsData))
 
         for row, questionData in enumerate(questionsData):
@@ -2668,7 +2677,66 @@ class QuestionsTableWidget(TableWidget):
             )
             self.setItem(row, 3, subQuestionsItem)
 
+            # More column
+            moreButton = TransparentToolButton(FluentIcon.MORE, parent=self)
+            moreButton.setFixedSize(20, 20)
+            moreButton.setCursor(Qt.CursorShape.PointingHandCursor)
+            moreButton.clicked.connect(
+                lambda checked, row=row: self.showContextMenuForRow(row)
+            )
+            self.setCellWidget(row, 4, moreButton)
+
             self.setRowHeight(row, 50)
+
+    def handleItemDoubleClick(self, item):
+        """Handle double-click on assignment item to review"""
+        if item is None:
+            return
+
+        row = item.row()
+        if row < len(self.questions):
+            questionId = self.questions[row]["id"]
+            self.handlePreviewClick(questionId)
+
+    def showContextMenu(self, position):
+        """Show context menu on right-click"""
+        item = self.itemAt(position)
+        if item is None:
+            return
+
+        row = item.row()
+        questionId = self.questions[row]["id"]
+
+        menu = RoundMenu(parent=self)
+
+        previewAction = Action(FluentIcon.VIEW, "Preview Question")
+        previewAction.triggered.connect(lambda: self.handlePreviewClick(questionId))
+        menu.addAction(previewAction)
+
+        menu.exec(self.mapToGlobal(position))
+
+    def showContextMenuForRow(self, row: int):
+        """Show context menu for a specific row at the button's position"""
+        if row >= len(self.questions):
+            return
+
+        questionId = self.questions[row]["id"]
+
+        menu = RoundMenu(parent=self)
+
+        previewAction = Action(FluentIcon.VIEW, "Preview Question")
+        previewAction.triggered.connect(lambda: self.handlePreviewClick(questionId))
+        menu.addAction(previewAction)
+
+        cellRect = self.visualRect(self.model().index(row, 4))
+        globalPos = self.mapToGlobal(cellRect.bottomLeft())
+        menuPos = QPoint(globalPos.x() + cellRect.width() // 2, globalPos.y())
+
+        menu.exec(menuPos)
+
+    def handlePreviewClick(self, questionId: int):
+        """Handle preview button click"""
+        self.controller.loadQuestionPreview(questionId)
 
 
 class UploadQuestionDialog(CardWidget):
@@ -3083,13 +3151,15 @@ class SubQuestionWidget(SimpleCardWidget):
 
     def getData(self):
         """Get all data from this sub-question"""
+        keyword_text = self.keywordsInput.text().strip()
+        option_text = self.optionsInput.toPlainText().strip()
         return {
             "description": self.descriptionInput.toPlainText().strip(),
             "answer": self.answerInput.toPlainText().strip(),
             "concept": self.conceptCombo.currentText(),
             "process": self.processCombo.currentText(),
-            "keywords": self.keywordsInput.text().strip().split(","),
-            "options": self.optionsInput.toPlainText().strip().split("\n"),
+            "keywords": keyword_text.split(",") if keyword_text != "" else None,
+            "options": option_text.split("\n") if option_text != "" else None,
             "image_path": self.imagePath,
             "image_description": self.imageDescriptionInput.text().strip(),
         }
@@ -3455,15 +3525,17 @@ class TeacherAssignmentQuestionInterface(QWidget):
     def __init__(
         self,
         assignmentData: dict = None,
-        teacherController=None,
+        teacherController: TeacherController = None,
+        previousInterface="class",
         parent=None,
     ):
         super().__init__(parent)
         self.setObjectName("teacherAssignmentQuestionInterface")
         self.teacherController = teacherController
+        self.previousInterface = previousInterface
 
         self.assignmentData = assignmentData or {}
-        self.assignment_title = self.assignmentData.get("title", "Assignment")
+        self.assignmentTitle = self.assignmentData.get("title", "Assignment")
         self.questions = self.assignmentData.get("questions", [])
 
         self.currentQuestionIndex = 0
@@ -3502,7 +3574,7 @@ class TeacherAssignmentQuestionInterface(QWidget):
         headerLayout.setSpacing(8)
 
         # Assignment title
-        self.titleLabel = TitleLabel(self.assignment_title)
+        self.titleLabel = TitleLabel(self.assignmentTitle)
         headerLayout.addWidget(self.titleLabel)
 
         # Current question title
@@ -3677,7 +3749,10 @@ class TeacherAssignmentQuestionInterface(QWidget):
             self._loadCurrentQuestion()
         else:
             if self.teacherController:
-                self.teacherController.goToAssignments()
+                if self.previousInterface == "assignments":
+                    self.teacherController.goToAssignments()
+                elif self.previousInterface == "questions":
+                    self.teacherController.goToQuestions()
 
     def _onNextClicked(self):
         """Handle next button click"""
@@ -3686,7 +3761,10 @@ class TeacherAssignmentQuestionInterface(QWidget):
             self._loadCurrentQuestion()
         else:
             if self.teacherController:
-                self.teacherController.goToAssignments()
+                if self.previousInterface == "assignments":
+                    self.teacherController.goToAssignments()
+                elif self.previousInterface == "questions":
+                    self.teacherController.goToQuestions()
 
 
 class TeacherAssignmentReviewInterface(QWidget):
@@ -3704,7 +3782,7 @@ class TeacherAssignmentReviewInterface(QWidget):
         self.setObjectName("teacherAssignmentReviewInterface")
 
         self.assignmentTitle = self.reviewData.get("title", "Assignment Review")
-        self.classId = self.reviewData.get("class_id", "Class")
+        self.classId = self.reviewData.get("class_id", "")
         self.totalStudents = self.reviewData.get("total_students", 0)
         self.questions = self.reviewData.get("questions", [])
 
@@ -4136,6 +4214,7 @@ class TeacherMainWindow(FluentWindow):
             self.handleShowAssignmentQuestions
         )
         self.teacherController.navigateToAssignments.connect(self.handleGoToAssignments)
+        self.teacherController.navigateToQuestions.connect(self.handleGoToQuestions)
 
         self.teacherController.dashboardDataReady.connect(self.onDashboardDataReady)
         self.teacherController.classesDataReady.connect(self.onClassesDataReady)
@@ -4163,6 +4242,9 @@ class TeacherMainWindow(FluentWindow):
         self.teacherController.operationError.connect(self.onOperationError)
         self.teacherController.subQuestionStudentPerformanceReady.connect(
             self.onSubQuestionStudentPerformanceReady
+        )
+        self.teacherController.questionPreviewDataReady.connect(
+            self.onQuestionPreviewDataReady
         )
 
     def initNavigation(self):
@@ -4227,9 +4309,41 @@ class TeacherMainWindow(FluentWindow):
         """Handle showing assignment questions interface with standard answers"""
         self.teacherController.loadAssignmentQuestions(assignmentId)
 
+    def handleShowQuestionPreview(self, questionData: dict):
+        """Handle showing question preview"""
+        data = {
+            "id": questionData.get("id"),
+            "title": questionData.get("title"),
+            "questions": [questionData],
+        }
+
+        if not self.assignmentQuestionInterface:
+            self.assignmentQuestionInterface = TeacherAssignmentQuestionInterface(
+                data, self.teacherController, "questions", self
+            )
+            self.stackedWidget.addWidget(self.assignmentQuestionInterface)
+
+        self.assignmentQuestionInterface.assignmentData = data
+        self.assignmentQuestionInterface.assignmentTitle = data.get("title")
+        self.assignmentQuestionInterface.titleLabel.setText(
+            f"Question Preview: {data.get('title')}"
+        )
+        self.assignmentQuestionInterface.previousInterface = "questions"
+        self.assignmentQuestionInterface.questions = data.get("questions", [])
+        self.assignmentQuestionInterface.totalQuestions = len(data.get("questions", []))
+        self.assignmentQuestionInterface.currentQuestionIndex = 0
+        self.assignmentQuestionInterface._loadCurrentQuestion()
+
+        self.stackedWidget.setCurrentWidget(self.assignmentQuestionInterface)
+        self.navigationInterface.setCurrentItem("teacherQuestionsInterface")
+
     def handleGoToAssignments(self):
         """Handle navigation back to assignments interface"""
         self.switchTo(self.assignmentsInterface)
+
+    def handleGoToQuestions(self):
+        """Handle navigation back to questions interface"""
+        self.switchTo(self.questionsInterface)
 
     def _finishLoading(self):
         """Finish loading data"""
@@ -4450,11 +4564,14 @@ class TeacherMainWindow(FluentWindow):
         """Handle assignment questions data ready"""
         if not self.assignmentQuestionInterface:
             self.assignmentQuestionInterface = TeacherAssignmentQuestionInterface(
-                data, self.teacherController, self
+                data, self.teacherController, "assignments", self
             )
             self.stackedWidget.addWidget(self.assignmentQuestionInterface)
 
         self.assignmentQuestionInterface.assignmentData = data
+        self.assignmentQuestionInterface.assignmentTitle = data.get("title")
+        self.assignmentQuestionInterface.titleLabel.setText(data.get("title"))
+        self.assignmentQuestionInterface.previousInterface = "assignments"
         self.assignmentQuestionInterface.questions = data.get("questions", [])
         self.assignmentQuestionInterface.totalQuestions = len(data.get("questions", []))
         self.assignmentQuestionInterface.currentQuestionIndex = 0
@@ -4500,3 +4617,7 @@ class TeacherMainWindow(FluentWindow):
         self.performanceWindow.show()
         self.performanceWindow.raise_()
         self.performanceWindow.activateWindow()
+
+    def onQuestionPreviewDataReady(self, data: dict):
+        """Handle question preview data ready"""
+        self.handleShowQuestionPreview(data)
