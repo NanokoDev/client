@@ -4,6 +4,7 @@ from nanoko.models.user import User
 from PyQt6.QtWidgets import QApplication
 from qfluentwidgets import InfoBar, InfoBarPosition
 
+from app.config import NANOKO_BASE_URL
 from app.controllers.apiWorker import ApiWorker
 from app.views.signinDialog import SignInDialog
 from app.views.signupDialog import SignUpDialog
@@ -17,7 +18,7 @@ class MainController:
     """Main controller for the application"""
 
     def __init__(self):
-        self.nanokoClient = Nanoko()
+        self.nanokoClient = Nanoko(base_url=NANOKO_BASE_URL)
 
         self.signinDialog = None
         self.signupDialog = None
