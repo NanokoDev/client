@@ -1,1 +1,1 @@
-NANOKO_BASE_URL = "http://localhost:25324"
+NANOKO_BASE_URL = "http://127.0.0.1:25324"

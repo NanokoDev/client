@@ -121,7 +121,7 @@ dev = [
 requires-dist = [
     { name = "keyring", specifier = ">=24.0.0" },
     { name = "matplotlib", specifier = ">=3.7.0" },
-    { name = "nanoko-python", editable = "../nanoko-python" },
+    { name = "nanoko-python", specifier = ">=0.2.1" },
     { name = "pyqt6", specifier = ">=6.9.0" },
     { name = "pyqt6-fluent-widgets", specifier = ">=1.8.1" },
     { name = "pytz", specifier = ">=2025.2" },
@@ -129,7 +129,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "nanoko-python", editable = "../nanoko-python" },
+    { name = "nanoko-python" },
     { name = "nuitka", specifier = ">=2.7.10" },
     { name = "pyinstaller", specifier = ">=6.14.1" },
 ]
@@ -548,16 +548,14 @@ wheels = [
 [[package]]
 name = "nanoko-python"
 version = "0.2.1"
-source = { editable = "../nanoko-python" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic", extra = ["email"] },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "httpx", specifier = ">=0.28.1" },
-    { name = "pydantic", extras = ["email"], specifier = ">=2.11.4" },
+sdist = { url = "https://files.pythonhosted.org/packages/79/b2/842ccd0b17ec9a0d35f1a575d2e8c68d68a2d2d4970a2b24e8cd03613b0d/nanoko_python-0.2.1.tar.gz", hash = "sha256:a6c27a48f2d457bc83149526458221eaeb648d12e8cff8e01dbab47bac6e1126", size = 10817 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/15/ac/132dfa8c0c8203ab3f741e5d139c835fd41341303bac91b4ecc292689a35/nanoko_python-0.2.1-py3-none-any.whl", hash = "sha256:fab9f0a728e8eaa0ec9f7850b108bf0070bebdc911538d23c4be1a5dd560ae29", size = 14873 },
 ]
 
 [[package]]
