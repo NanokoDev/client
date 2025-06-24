@@ -74,7 +74,7 @@ For more details, see the [GNU General Public License v3.0](https://www.gnu.org/
 This project makes use of the following open-source libraries:
 
 - [PyQt-Fluent-Widgets](https://github.com/zhiyiYo/PyQt-Fluent-Widgets) - A fluent design widgets library based on C++ Qt/PyQt/PySide. Licensed under GNU General Public License v3.0
-- [nanoko-python](https://github.com/nanoko-project/nanoko-python) - Python SDK for Nanoko. Licensed under MIT License
+- [nanoko-python](https://github.com/NanokoDev/nanoko-python) - Python SDK for Nanoko. Licensed under MIT License
 
 The original licenses for these dependencies can be found in the `LICENSES` directory:
 - `LICENSES/PyQt-Fluent-Widgets-LICENSE`: GPL-3.0 license for PyQt-Fluent-Widgets
