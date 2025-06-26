@@ -2913,8 +2913,6 @@ class TeacherQuestionsInterface(QWidget):
         self.questionsTable = QuestionsTableWidget(self.controller)
         mainLayout.addWidget(self.questionsTable)
 
-        mainLayout.addStretch()
-
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(scrollArea)
