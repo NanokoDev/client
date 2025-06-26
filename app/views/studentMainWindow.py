@@ -1451,6 +1451,7 @@ class QuestionsInterface(QWidget):
         mainLayout.addLayout(headerLayout)
 
         questionsLayout = QVBoxLayout()
+        questionsLayout.setObjectName("questionsLayout")
         questionsLayout.setSpacing(20)
 
         for questionGroup in self.questionsData:
@@ -1475,36 +1476,27 @@ class QuestionsInterface(QWidget):
         self.questionsData = questionsData
 
         for layout in self.findChildren(QVBoxLayout):
-            hasQuestionCards = False
-            for i in range(layout.count()):
+            if layout.objectName() != "questionsLayout":
+                continue
+
+            for i in reversed(range(layout.count())):
                 item = layout.itemAt(i)
                 if item and item.widget() and isinstance(item.widget(), QuestionCard):
-                    hasQuestionCards = True
-                    break
+                    widget = item.widget()
+                    layout.removeWidget(widget)
+                    widget.setParent(None)
+                    widget.deleteLater()
 
-            if hasQuestionCards:
-                for i in reversed(range(layout.count())):
-                    item = layout.itemAt(i)
-                    if (
-                        item
-                        and item.widget()
-                        and isinstance(item.widget(), QuestionCard)
-                    ):
-                        widget = item.widget()
-                        layout.removeWidget(widget)
-                        widget.setParent(None)
-                        widget.deleteLater()
-
-                for questionGroup in self.questionsData:
-                    questionCard = QuestionCard(
-                        questionGroup.get("id", ""),
-                        questionGroup["title"],
-                        questionGroup["sub_questions"],
-                        questionGroup.get("footer", None),
-                    )
-                    questionCard.questionClicked.connect(self.questionClicked.emit)
-                    layout.addWidget(questionCard)
-                break
+            for questionGroup in self.questionsData:
+                questionCard = QuestionCard(
+                    questionGroup.get("id", ""),
+                    questionGroup["title"],
+                    questionGroup["sub_questions"],
+                    questionGroup.get("footer", None),
+                )
+                questionCard.questionClicked.connect(self.questionClicked.emit)
+                layout.addWidget(questionCard)
+            break
 
 
 class QuestionAnsweringInterface(QWidget):
